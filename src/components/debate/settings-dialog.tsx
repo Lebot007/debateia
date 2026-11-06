@@ -58,28 +58,11 @@ export function SettingsDialog({
         <DialogHeader>
           <DialogTitle>Configurações</DialogTitle>
           <DialogDescription>
-            Automação, privacidade e controle dos dados salvos neste navegador.
+            Privacidade e controle dos dados salvos neste navegador.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3 rounded-xl border bg-card p-3">
-            <div className="space-y-0.5">
-              <Label htmlFor="set-detect" className="text-sm font-medium">
-                Colagem inteligente
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Ao voltar para esta aba com uma resposta copiada, o DebateIA identifica a IA de
-                origem e oferece colar no slot certo, com um clique.
-              </p>
-            </div>
-            <Switch
-              id="set-detect"
-              checked={settings.autoDetectPaste}
-              onCheckedChange={(v) => onChange({ ...settings, autoDetectPaste: v })}
-            />
-          </div>
-
           <div className="flex items-start justify-between gap-3 rounded-xl border bg-card p-3">
             <div className="space-y-0.5">
               <Label htmlFor="set-files" className="text-sm font-medium">

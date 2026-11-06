@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Github, LayoutGrid, MessagesSquare, ScanSearch, Settings } from "lucide-react";
-import { toast } from "sonner";
+import { Github, LayoutGrid, MessagesSquare, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackgroundFx } from "@/components/debate/background-fx";
 import { HomeView } from "@/components/debate/home-view";
@@ -20,11 +19,14 @@ import {
   saveSettings,
   wipeDebates,
 } from "@/lib/storage";
-import { AiInfo, resolveAi } from "@/lib/ais";
-import { detectAiFromText } from "@/lib/detect";
-import { tryReadClipboard, clipboardReadAvailable } from "@/lib/clipboard";
+import { AiInfo } from "@/lib/ais";
 import { AppSettings, AppStore, Debate } from "@/lib/types";
 const REPO_URL = "https://github.com/Lebot007/debateia";
+
+const DEFAULT_SETTINGS_APP: AppSettings = {
+  includeFilesInPrompts: true,
+  wipeOnClose: false,
+};
 
 function SiteHeader({
   inDebate,
@@ -127,22 +129,8 @@ function SiteFooter() {
 export default function DebateApp() {
   const [store, setStore] = React.useState<AppStore | null>(null);
   const [roster, setRoster] = React.useState<AiInfo[]>([]);
-  const [settings, setSettings] = React.useState<AppSettings>({
-    autoDetectPaste: true,
-    includeFilesInPrompts: true,
-    wipeOnClose: false,
-  });
+  const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS_APP);
   const [ready, setReady] = React.useState(false);
-
-  // Refs para acesso ao estado mais recente dentro de callbacks assíncronos
-  const storeRef = React.useRef(store);
-  const rosterRef = React.useRef(roster);
-  React.useEffect(() => {
-    storeRef.current = store;
-  }, [store]);
-  React.useEffect(() => {
-    rosterRef.current = roster;
-  }, [roster]);
 
   React.useEffect(() => {
     (async () => {
@@ -240,114 +228,6 @@ export default function DebateApp() {
     mutate((s) => ({ ...s, debates: [], activeId: null }));
   }, [mutate]);
 
-  /* -------------------- colagem inteligente -------------------- */
-
-  const placePaste = React.useCallback(
-    (text: string, aiId: string, round: number) => {
-      patchActive((d) => ({
-        ...d,
-        answers: {
-          ...d.answers,
-          [aiId]: { ...(d.answers[aiId] ?? {}), [round]: text },
-        },
-      }));
-      window.setTimeout(() => {
-        document
-          .getElementById(`slot-${aiId}-${round}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 120);
-    },
-    [patchActive],
-  );
-
-  const handleIncomingText = React.useCallback(
-    (text: string) => {
-      const s = storeRef.current;
-      const d = s?.debates.find((x) => x.id === s.activeId);
-      if (!d) {
-        toast("📥 Há uma resposta copiada na área de transferência", {
-          description: "Abra um debate e use o botão Colar no slot da IA.",
-          duration: 8000,
-        });
-        return;
-      }
-      const det = detectAiFromText(text, rosterRef.current);
-      const round = d.currentRound;
-
-      if (!det) {
-        toast("📥 Novo texto na área de transferência", {
-          description: "Não identifiquei a IA de origem. Cole no slot desejado com o botão Colar.",
-          duration: 9000,
-        });
-        return;
-      }
-
-      const ai = resolveAi(det.aiId, rosterRef.current);
-      const confidence = `${Math.round(det.confidence * 100)}%`;
-
-      if (!d.participantIds.includes(det.aiId)) {
-        toast(`📥 Parece resposta do ${ai.name} (${confidence})`, {
-          description: `${ai.name} não participa deste debate. Adicione-a pelo gerenciador de IAs.`,
-          duration: 10000,
-        });
-        return;
-      }
-
-      const alreadyFilled = Boolean(d.answers[det.aiId]?.[round]?.trim());
-      if (alreadyFilled) {
-        toast(`📥 Parece resposta do ${ai.name} (${confidence})`, {
-          description: `O slot de ${ai.name} na rodada ${round} já tem resposta.`,
-          action: {
-            label: "Substituir",
-            onClick: () => placePaste(text, det.aiId, round),
-          },
-          duration: 12000,
-        });
-        return;
-      }
-
-      toast.success(`📥 Parece resposta do ${ai.name} (${confidence})`, {
-        description: `Colar no slot de ${ai.name}, rodada ${round}?`,
-        action: {
-          label: "Colar",
-          onClick: () => placePaste(text, det.aiId, round),
-        },
-        duration: 12000,
-      });
-    },
-    [placePaste],
-  );
-
-  // Observa a área de transferência quando a aba ganha foco
-  React.useEffect(() => {
-    if (!settings.autoDetectPaste || !clipboardReadAvailable()) return;
-    let denied = false;
-    let lastText = "";
-
-    const check = async () => {
-      if (denied || document.visibilityState !== "visible") return;
-      const { text, denied: d } = await tryReadClipboard();
-      if (d) {
-        denied = true;
-        toast.info("Colagem inteligente indisponível: o navegador não autorizou a leitura da área de transferência. Use o botão Colar nos slots.", {
-          duration: 10000,
-        });
-        return;
-      }
-      if (!text || text.length < 60 || text === lastText) return;
-      lastText = text;
-      handleIncomingText(text);
-    };
-
-    const onFocus = () => void check();
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [settings.autoDetectPaste, handleIncomingText, active?.id]);
-
   if (!ready || !store) {
     return (
       <div className="flex min-h-screen items-center justify-center" role="status" aria-live="polite">
@@ -388,7 +268,6 @@ export default function DebateApp() {
               <HomeView
                 debates={store.debates}
                 roster={roster}
-                settings={settings}
                 onCreate={createDebate}
                 onOpen={openDebate}
                 onDelete={deleteDebate}

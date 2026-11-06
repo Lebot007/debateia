@@ -7,7 +7,7 @@ import {
   Crown,
   ExternalLink,
   MessageSquareReply,
-  ScanSearch,
+  Tags,
   Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -42,14 +42,14 @@ const STEPS = [
     desc: "Um clique copia e abre o site da IA (ChatGPT, Claude, GLM, Qwen…). Você usa a sua conta de sempre, sem API.",
   },
   {
-    icon: ScanSearch,
-    title: "3. Cole — e o site reconhece",
-    desc: "Ao voltar com a resposta copiada, o app identifica de qual IA ela veio e coloca no slot certo. Com anexos de imagem, TXT e MD.",
+    icon: Tags,
+    title: "3. Cole no slot certo",
+    desc: "Cada slot já é marcado com a IA de origem — você escolhe e cola a resposta nele. Anexos de imagem, TXT e MD são bem-vindos.",
   },
   {
     icon: Crown,
     title: "4. Síntese da IA Chefe",
-    desc: "No fim, a IA Chefe avalia o painel, resolve divergências e entrega a resposta final consolidada.",
+    desc: "No fim, a IA Chefe avalia o painel, resolve divergências e entrega a resposta final — condensada e pronta para usar.",
   },
 ];
 
@@ -93,7 +93,7 @@ export function HomeView({
           variant="outline"
           className="mb-5 border-primary/40 bg-primary/10 text-primary"
         >
-          100% no navegador · sem API · colagem inteligente e anexos
+          100% no navegador · sem API · anexos e síntese final
         </Badge>
         <h1 className="mx-auto max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
           Suas IAs debatem entre si.{" "}
@@ -101,8 +101,8 @@ export function HomeView({
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-muted-foreground sm:text-lg">
           Monte um painel com as IAs que você já usa — GPT, Claude, Gemini, DeepSeek, GLM,
-          Qwen e qualquer outra. O DebateIA automatiza o revezamento: identifica quem disse o
-          quê e monta o próximo prompt pra você.
+          Qwen e qualquer outra. O DebateIA automatiza o revezamento: monta cada prompt,
+          organiza as respostas por IA e prepara a síntese final da IA Chefe.
         </p>
       </motion.section>
 

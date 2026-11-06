@@ -40,8 +40,6 @@ export interface Debate {
 
 /** Preferências do usuário (salvas no localStorage). */
 export interface AppSettings {
-  /** Ao voltar para a aba com uma resposta copiada, identifica a IA e oferece colar. */
-  autoDetectPaste: boolean;
   /** Inclui o conteúdo dos TXT/MD anexados ao tema dentro dos prompts gerados. */
   includeFilesInPrompts: boolean;
   /** Modo sessão: nada é persistido; ao fechar a aba tudo some. */
@@ -49,7 +47,6 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  autoDetectPaste: true,
   includeFilesInPrompts: true,
   wipeOnClose: false,
 };

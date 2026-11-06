@@ -50,6 +50,7 @@ import {
   buildJsonExport,
   buildTranscriptMarkdown,
   latestAnswer,
+  splitChiefFinal,
 } from "@/lib/prompts";
 import { downloadText, slugify } from "@/lib/download";
 import { AppSettings, Debate } from "@/lib/types";
@@ -462,31 +463,73 @@ function FinalAnswerCard({
   roster: AiInfo[];
   onNewDebate: () => void;
 }) {
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const { answer, hasFinalSection } = React.useMemo(
+    () => splitChiefFinal(debate.chiefFinal),
+    [debate.chiefFinal],
+  );
   const base = `debateia-${slugify(debate.topic)}`;
+
   return (
     <Card className="final-glow border-emerald-500/40">
       <CardHeader className="pb-4">
         <Badge className="w-fit bg-emerald-500 text-white hover:bg-emerald-500">
           Resposta final
         </Badge>
-        <CardTitle className="text-lg">Síntese consolidada do painel</CardTitle>
+        <CardTitle className="text-lg">Resposta final do debate</CardTitle>
         <CardDescription>
-          Resultado do debate entre {debate.participantIds.map((id) => aiName(id, roster)).join(", ")} —
-          sintetizado por {aiName(debate.chiefId, roster)}.
+          Versão condensada, organizada e resumida da síntese de {aiName(debate.chiefId, roster)} —
+          o resultado do debate entre {debate.participantIds.map((id) => aiName(id, roster)).join(", ")}.
+          Pronta para copiar e usar.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 text-sm leading-relaxed">
-          {debate.chiefFinal}
+      <CardContent className="space-y-3">
+        <div className="whitespace-pre-wrap rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-4 text-sm leading-relaxed">
+          {answer}
         </div>
+        {hasFinalSection && (
+          <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 px-2 text-xs text-muted-foreground"
+                aria-expanded={detailsOpen}
+              >
+                <ChevronDown
+                  className={cn("h-4 w-4 transition-transform", detailsOpen && "rotate-180")}
+                  aria-hidden="true"
+                />
+                Ver síntese completa da IA Chefe (avaliação e divergências)
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div
+                className="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 text-xs leading-relaxed text-muted-foreground"
+                aria-label="Síntese completa da IA Chefe"
+              >
+                {debate.chiefFinal}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
         <CopyButton
-          text={debate.chiefFinal}
+          text={answer}
           label="Copiar resposta final"
           toastMessage="Resposta final copiada!"
           className="flex-1 sm:flex-none"
         />
+        {hasFinalSection && (
+          <CopyButton
+            text={debate.chiefFinal}
+            label="Copiar síntese completa"
+            toastMessage="Síntese completa copiada!"
+            variant="outline"
+            className="flex-1 sm:flex-none"
+          />
+        )}
         <Button
           variant="outline"
           size="sm"

@@ -8,25 +8,23 @@ export interface AiInfo {
   /** Cores da marca para o chip do app. */
   colors: [string, string];
   fg: string;
-  /** Palavras-chave usadas para identificar de qual IA veio um texto colado. */
-  signatures?: string[];
 }
 
 /** Catálogo de IAs prontas — o usuário pode adicionar qualquer uma ao seu elenco. */
 export const AI_CATALOG: AiInfo[] = [
-  { id: "chatgpt", name: "ChatGPT", provider: "OpenAI", url: "https://chatgpt.com", glyph: "GPT", colors: ["#0EA37F", "#0A6E56"], fg: "#FFFFFF", signatures: ["chatgpt", "gpt-4", "gpt-5", "openai", "modelo de linguagem"] },
-  { id: "claude", name: "Claude", provider: "Anthropic", url: "https://claude.ai", glyph: "CL", colors: ["#D97757", "#A85335"], fg: "#FFFFFF", signatures: ["claude", "anthropic"] },
-  { id: "gemini", name: "Gemini", provider: "Google", url: "https://gemini.google.com", glyph: "GE", colors: ["#4285F4", "#9B72CB"], fg: "#FFFFFF", signatures: ["gemini"] },
-  { id: "deepseek", name: "DeepSeek", provider: "DeepSeek", url: "https://chat.deepseek.com", glyph: "DS", colors: ["#4D6BFE", "#3450D9"], fg: "#FFFFFF", signatures: ["deepseek"] },
-  { id: "grok", name: "Grok", provider: "xAI", url: "https://grok.com", glyph: "GK", colors: ["#232526", "#4A4A4C"], fg: "#F5F5F5", signatures: ["grok", "xai"] },
-  { id: "copilot", name: "Copilot", provider: "Microsoft", url: "https://copilot.microsoft.com", glyph: "CO", colors: ["#5CC0DE", "#1560A8"], fg: "#FFFFFF", signatures: ["copilot"] },
-  { id: "glm", name: "GLM", provider: "Z.ai", url: "https://chat.z.ai", glyph: "GLM", colors: ["#0D9488", "#0F766E"], fg: "#FFFFFF", signatures: ["glm", "chatglm", "z.ai"] },
-  { id: "qwen", name: "Qwen", provider: "Alibaba", url: "https://chat.qwen.ai", glyph: "QW", colors: ["#7C3AED", "#5318C0"], fg: "#FFFFFF", signatures: ["qwen", "alibaba"] },
-  { id: "perplexity", name: "Perplexity", provider: "Perplexity AI", url: "https://www.perplexity.ai", glyph: "PX", colors: ["#20B8CD", "#0E8496"], fg: "#FFFFFF", signatures: ["perplexity"] },
-  { id: "metaai", name: "Meta AI", provider: "Meta", url: "https://www.meta.ai", glyph: "MT", colors: ["#0866FF", "#0053C0"], fg: "#FFFFFF", signatures: ["meta ai", "llama"] },
-  { id: "mistral", name: "Le Chat", provider: "Mistral AI", url: "https://chat.mistral.ai", glyph: "MI", colors: ["#FA500F", "#FFD800"], fg: "#2B1600", signatures: ["mistral", "le chat"] },
-  { id: "kimi", name: "Kimi", provider: "Moonshot AI", url: "https://www.kimi.com", glyph: "KM", colors: ["#4F46E5", "#332F9F"], fg: "#FFFFFF", signatures: ["kimi", "moonshot"] },
-  { id: "poe", name: "Poe", provider: "Quora", url: "https://poe.com", glyph: "PO", colors: ["#5D5CDE", "#3D3BB8"], fg: "#FFFFFF", signatures: ["poe"] },
+  { id: "chatgpt", name: "ChatGPT", provider: "OpenAI", url: "https://chatgpt.com", glyph: "GPT", colors: ["#0EA37F", "#0A6E56"], fg: "#FFFFFF" },
+  { id: "claude", name: "Claude", provider: "Anthropic", url: "https://claude.ai", glyph: "CL", colors: ["#D97757", "#A85335"], fg: "#FFFFFF" },
+  { id: "gemini", name: "Gemini", provider: "Google", url: "https://gemini.google.com", glyph: "GE", colors: ["#4285F4", "#9B72CB"], fg: "#FFFFFF" },
+  { id: "deepseek", name: "DeepSeek", provider: "DeepSeek", url: "https://chat.deepseek.com", glyph: "DS", colors: ["#4D6BFE", "#3450D9"], fg: "#FFFFFF" },
+  { id: "grok", name: "Grok", provider: "xAI", url: "https://grok.com", glyph: "GK", colors: ["#232526", "#4A4A4C"], fg: "#F5F5F5" },
+  { id: "copilot", name: "Copilot", provider: "Microsoft", url: "https://copilot.microsoft.com", glyph: "CO", colors: ["#5CC0DE", "#1560A8"], fg: "#FFFFFF" },
+  { id: "glm", name: "GLM", provider: "Z.ai", url: "https://chat.z.ai", glyph: "GLM", colors: ["#0D9488", "#0F766E"], fg: "#FFFFFF" },
+  { id: "qwen", name: "Qwen", provider: "Alibaba", url: "https://chat.qwen.ai", glyph: "QW", colors: ["#7C3AED", "#5318C0"], fg: "#FFFFFF" },
+  { id: "perplexity", name: "Perplexity", provider: "Perplexity AI", url: "https://www.perplexity.ai", glyph: "PX", colors: ["#20B8CD", "#0E8496"], fg: "#FFFFFF" },
+  { id: "metaai", name: "Meta AI", provider: "Meta", url: "https://www.meta.ai", glyph: "MT", colors: ["#0866FF", "#0053C0"], fg: "#FFFFFF" },
+  { id: "mistral", name: "Le Chat", provider: "Mistral AI", url: "https://chat.mistral.ai", glyph: "MI", colors: ["#FA500F", "#FFD800"], fg: "#2B1600" },
+  { id: "kimi", name: "Kimi", provider: "Moonshot AI", url: "https://www.kimi.com", glyph: "KM", colors: ["#4F46E5", "#332F9F"], fg: "#FFFFFF" },
+  { id: "poe", name: "Poe", provider: "Quora", url: "https://poe.com", glyph: "PO", colors: ["#5D5CDE", "#3D3BB8"], fg: "#FFFFFF" },
 ];
 
 /** Elenco padrão: 8 IAs prontas para uso, todas editáveis pelo usuário. */
@@ -64,7 +62,6 @@ const FALLBACK_AI: AiInfo = {
   glyph: "AI",
   colors: ["#64748B", "#475569"],
   fg: "#FFFFFF",
-  signatures: [],
 };
 
 /** Resolve uma IA pelo id: primeiro no elenco do usuário (permite renomear), depois no catálogo. */

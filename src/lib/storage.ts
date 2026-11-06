@@ -279,7 +279,6 @@ function normalizeAi(a: AiInfo): AiInfo {
     glyph: a.glyph || catalog?.glyph || "AI",
     colors: Array.isArray(a.colors) && a.colors.length === 2 ? a.colors : catalog?.colors ?? ["#64748B", "#475569"],
     fg: a.fg || "#FFFFFF",
-    signatures: Array.isArray(a.signatures) ? a.signatures : catalog?.signatures ?? [],
   };
 }
 

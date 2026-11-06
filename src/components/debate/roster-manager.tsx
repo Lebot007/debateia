@@ -265,7 +265,6 @@ function blankAi(): AiInfo {
     glyph: "AI",
     colors: AI_PALETTE[2].colors,
     fg: AI_PALETTE[2].fg,
-    signatures: [],
   };
 }
 
@@ -289,7 +288,6 @@ function AiEditorForm({
   const [name, setName] = React.useState(initial.name === "IA (removida)" ? "" : initial.name);
   const [provider, setProvider] = React.useState(initial.provider);
   const [url, setUrl] = React.useState(initial.url);
-  const [signatures, setSignatures] = React.useState((initial.signatures ?? []).join(", "));
   const [colorIndex, setColorIndex] = React.useState(() => {
     const idx = AI_PALETTE.findIndex(
       (p) => p.colors[0] === initial.colors[0] && p.colors[1] === initial.colors[1],
@@ -322,10 +320,6 @@ function AiEditorForm({
         return;
       }
     }
-    const sigs = signatures
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
     onSave({
       id: isNew ? `${slugId(cleanName)}-${uid().slice(0, 6)}` : initial.id,
       name: cleanName,
@@ -334,7 +328,6 @@ function AiEditorForm({
       glyph: glyphFor(cleanName),
       colors: AI_PALETTE[colorIndex].colors,
       fg: AI_PALETTE[colorIndex].fg,
-      signatures: sigs,
     });
   }
 
@@ -382,22 +375,6 @@ function AiEditorForm({
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://chat.exemplo.com"
         />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="ai-signatures" className="text-xs">
-          Palavras-chave para detecção (opcional)
-        </Label>
-        <Input
-          id="ai-signatures"
-          value={signatures}
-          onChange={(e) => setSignatures(e.target.value)}
-          placeholder="Ex.: glm, z.ai, chatglm"
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Separadas por vírgula. O app usa essas palavras para reconhecer de qual IA veio um
-          texto colado.
-        </p>
       </div>
 
       <div className="space-y-1">

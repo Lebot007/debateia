@@ -1,15 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardPaste, MoveRight } from "lucide-react";
+import { ClipboardPaste } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AiChip } from "@/components/debate/ai-chip";
 import { PromptBox } from "@/components/debate/prompt-box";
-import { AiInfo, resolveAi } from "@/lib/ais";
-import { detectAiFromText } from "@/lib/detect";
+import { AiInfo } from "@/lib/ais";
 import { tryReadClipboard } from "@/lib/clipboard";
 import { buildRoundPrompt } from "@/lib/prompts";
 import { AppSettings, Debate } from "@/lib/types";
@@ -26,8 +25,8 @@ interface AnswerSlotProps {
 
 /**
  * Slot de resposta de uma IA em uma rodada.
- * Automação: botão "Colar" lê a área de transferência e, se o texto parecer
- * resposta de outra IA do painel, sugere mover para o slot certo.
+ * Você marca manualmente a IA de origem: cada slot já é fixo de uma IA,
+ * e o botão "Colar" lê a área de transferência direto para este slot.
  */
 export function AnswerSlot({ debate, roster, ai, round, settings, onAnswer }: AnswerSlotProps) {
   const text = debate.answers[ai.id]?.[round] ?? "";
@@ -35,16 +34,6 @@ export function AnswerSlot({ debate, roster, ai, round, settings, onAnswer }: An
   const prompt = buildRoundPrompt(debate, ai.id, round, roster, {
     includeFiles: settings.includeFilesInPrompts,
   });
-
-  const suggestion = React.useMemo(() => {
-    if (text.trim().length < 120) return null;
-    const det = detectAiFromText(text, roster, ai.id);
-    if (!det || det.confidence < 0.45) return null;
-    const isParticipant = debate.participantIds.includes(det.aiId);
-    const targetEmpty = !debate.answers[det.aiId]?.[round]?.trim();
-    if (!isParticipant || !targetEmpty) return null;
-    return { ai: resolveAi(det.aiId, roster), confidence: det.confidence };
-  }, [text, roster, ai.id, debate, round]);
 
   async function handlePasteButton() {
     const { text: clip, denied } = await tryReadClipboard();
@@ -74,13 +63,6 @@ export function AnswerSlot({ debate, roster, ai, round, settings, onAnswer }: An
     }
   }
 
-  function moveToSuggested() {
-    if (!suggestion) return;
-    onAnswer(ai.id, round, "");
-    onAnswer(suggestion.ai.id, round, text);
-    toast.success(`Movido para o slot de ${suggestion.ai.name}.`);
-  }
-
   return (
     <div
       id={`slot-${ai.id}-${round}`}
@@ -106,25 +88,6 @@ export function AnswerSlot({ debate, roster, ai, round, settings, onAnswer }: An
           {answered ? "Respondida" : "Aguardando"}
         </Badge>
       </div>
-
-      {suggestion && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs">
-          <AiChip ai={suggestion.ai} size="sm" />
-          <span className="text-amber-700 dark:text-amber-300">
-            Este texto parece ser a resposta de <strong>{suggestion.ai.name}</strong> (
-            {Math.round(suggestion.confidence * 100)}% de confiança).
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1.5 border-amber-500/60 text-amber-700 dark:text-amber-300"
-            onClick={moveToSuggested}
-          >
-            <MoveRight className="h-3.5 w-3.5" aria-hidden="true" />
-            Mover para o slot de {suggestion.ai.name}
-          </Button>
-        </div>
-      )}
 
       <PromptBox
         title={`Prompt para ${ai.name} — Rodada ${round} de ${debate.totalRounds}`}

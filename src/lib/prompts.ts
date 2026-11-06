@@ -154,18 +154,107 @@ export function buildChiefPrompt(
     blocks,
     "",
     "SUA TAREFA COMO COORDENADORA:",
-    "1. AVALIAÇÃO DO PAINEL — avalie objetivamente cada resposta: pontos fortes, pontos fracos e confiabilidade (1 a 2 linhas por IA).",
-    "2. DIVERGÊNCIAS — liste as principais divergências entre as respostas e resolva cada uma com justificativa técnica.",
-    "3. RESPOSTA FINAL — produza a síntese definitiva do painel: completa, equilibrada, acionável e sem repetições. Essa é a resposta que o usuário vai usar.",
+    "1. AVALIAÇÃO DO PAINEL — avalie cada resposta em 1 linha por IA: principal ponto forte e principal fragilidade.",
+    "2. DIVERGÊNCIAS E RESOLUÇÕES — liste apenas as divergências relevantes e resolva cada uma em 1–2 linhas, com justificativa técnica.",
+    "3. RESPOSTA FINAL — escreva a seção final que o usuário vai usar de verdade.",
+    "",
+    "REGRAS PARA A SEÇÃO \"RESPOSTA FINAL\" (a mais importante):",
+    "- Comece a seção com o cabeçalho exato \"RESPOSTA FINAL\" numa linha própria.",
+    "- Ela deve ser a resposta correta ao tema, explicada e RESUMIDA: organize em parágrafos curtos e/ou tópicos, do mais importante para o menos importante.",
+    "- Explique o necessário, mas sem repetir a avaliação do painel, sem citar as outras IAs e sem meta-comentário (nada de \"como coordenadora\", \"o painel concluiu\"…).",
+    "- Seja completa, equilibrada e acionável: o usuário deve poder copiar só essa seção e usar como resposta definitiva.",
     "",
     "Formato obrigatório da resposta:",
-    '- "Avaliação do painel"',
-    '- "Divergências e resoluções"',
-    '- "RESPOSTA FINAL"',
+    '"Avaliação do painel"',
+    '"Divergências e resoluções"',
+    '"RESPOSTA FINAL"',
     "",
     "Responda em português.",
   );
   return parts.join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Extração da resposta final condensada                              */
+/* ------------------------------------------------------------------ */
+
+export interface ChiefFinalSplit {
+  /** Seção "RESPOSTA FINAL" condensada (ou o texto completo, como reserva). */
+  answer: string;
+  /** Texto completo colado pelo usuário. */
+  full: string;
+  /** true quando o texto tinha uma seção "RESPOSTA FINAL" delimitada. */
+  hasFinalSection: boolean;
+}
+
+const MIN_FINAL_CHARS = 40;
+
+function stripLeadingSeparator(text: string): string {
+  const lines = text.split("\n");
+  while (lines.length > 0 && /^\s*[-–—=*_\s]*$/.test(lines[0])) lines.shift();
+  return lines.join("\n").trim();
+}
+
+/**
+ * Separa a resposta final condensada do resto da síntese da IA Chefe.
+ *
+ * O prompt da Chefe pede que a resposta final venha após um cabeçalho
+ * "RESPOSTA FINAL" — esta função localiza esse cabeçalho (tolerante a
+ * variações: "## Resposta Final", "**RESPOSTA FINAL:**", "3. Resposta Final"…)
+ * e devolve só o que vem depois dele. Se nada for encontrado, devolve o
+ * texto completo para não perder nada.
+ */
+export function splitChiefFinal(chiefText: string): ChiefFinalSplit {
+  const full = chiefText.trim();
+  if (!full) return { answer: "", full: "", hasFinalSection: false };
+
+  const lines = full.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+
+    // Tira decorações de cabeçalho à esquerda: hashes, negrito, bullets e emojis.
+    const cleaned = raw
+      .replace(/^#{1,6}\s*/, "")
+      .replace(/^[^\p{L}\p{N}]+/u, "")
+      .trim();
+
+    // Caso 1 — linha curta (rótulo em linha própria ou rótulo curto com conteúdo após ":").
+    const noTrail = cleaned.replace(/[\s*_]+$/u, "").trim();
+    if (noTrail.length <= 80) {
+      const m = noTrail.match(/^(?:resposta|s[íi]ntese)\s+(?:final|consolidada)\b/i);
+      if (m) {
+        const sameLine = noTrail
+          .slice(m[0].length)
+          .replace(/^[\s:*_\-–—>]+/, "")
+          .trim();
+        const after = stripLeadingSeparator(lines.slice(i + 1).join("\n"));
+        const answer = [sameLine, after].filter(Boolean).join("\n").trim();
+        if (answer.length >= MIN_FINAL_CHARS) {
+          return { answer, full, hasFinalSection: true };
+        }
+      }
+      continue;
+    }
+
+    // Caso 2 — linha longa: só aceita no formato "RÓTULO CURTO: conteúdo…".
+    const inline = cleaned.match(
+      /^(?:resposta|s[íi]ntese)\s+(?:final|consolidada)\b[^:]{0,40}:\s*(.+)$/i,
+    );
+    if (inline) {
+      const sameLine = inline[1]
+        .replace(/^[\s*_]+/, "")
+        .replace(/[\s*_]+$/, "")
+        .trim();
+      const after = stripLeadingSeparator(lines.slice(i + 1).join("\n"));
+      const answer = [sameLine, after].filter(Boolean).join("\n").trim();
+      if (answer.length >= MIN_FINAL_CHARS) {
+        return { answer, full, hasFinalSection: true };
+      }
+    }
+  }
+
+  return { answer: full, full, hasFinalSection: false };
 }
 
 function formatPtDate(ts: number): string {
