@@ -7,6 +7,7 @@ import {
   Crown,
   ExternalLink,
   MessageSquareReply,
+  ScanSearch,
   Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -26,29 +27,29 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AiChip } from "@/components/debate/ai-chip";
 import { SetupForm } from "@/components/debate/setup-form";
-import { AiInfo, getAi } from "@/lib/ais";
+import { AiInfo, resolveAi } from "@/lib/ais";
 import { Debate } from "@/lib/types";
 
 const STEPS = [
   {
     icon: ClipboardCopy,
     title: "1. Copie o prompt",
-    desc: "O DebateIA monta o prompt perfeito para cada IA — com as respostas das outras já embutidas.",
+    desc: "O DebateIA monta o prompt perfeito para cada IA — com o tema, os anexos e as respostas das outras já embutidos.",
   },
   {
     icon: ExternalLink,
     title: "2. Abra a IA oficial",
-    desc: "Um clique copia o prompt e abre o site da IA. Você usa a sua conta de sempre, sem API.",
+    desc: "Um clique copia e abre o site da IA (ChatGPT, Claude, GLM, Qwen…). Você usa a sua conta de sempre, sem API.",
   },
   {
-    icon: MessageSquareReply,
-    title: "3. Cole a resposta",
-    desc: "Volte aqui e cole o que a IA respondeu. Tudo fica salvo automaticamente no seu navegador.",
+    icon: ScanSearch,
+    title: "3. Cole — e o site reconhece",
+    desc: "Ao voltar com a resposta copiada, o app identifica de qual IA ela veio e coloca no slot certo. Com anexos de imagem, TXT e MD.",
   },
   {
     icon: Crown,
     title: "4. Síntese da IA Chefe",
-    desc: "No fim, a IA Chefe avalia o painel, resolve divergências e entrega a resposta final.",
+    desc: "No fim, a IA Chefe avalia o painel, resolve divergências e entrega a resposta final consolidada.",
   },
 ];
 
@@ -64,12 +65,21 @@ function shortDate(ts: number): string {
 
 interface HomeViewProps {
   debates: Debate[];
+  roster: AiInfo[];
   onCreate: (debate: Debate) => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  onChangeRoster: (next: AiInfo[]) => void;
 }
 
-export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps) {
+export function HomeView({
+  debates,
+  roster,
+  onCreate,
+  onOpen,
+  onDelete,
+  onChangeRoster,
+}: HomeViewProps) {
   return (
     <div className="space-y-12 py-8 sm:py-12">
       {/* Hero */}
@@ -83,15 +93,16 @@ export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps)
           variant="outline"
           className="mb-5 border-primary/40 bg-primary/10 text-primary"
         >
-          100% no navegador · sem API · sem cadastro
+          100% no navegador · sem API · colagem inteligente e anexos
         </Badge>
         <h1 className="mx-auto max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
           Suas IAs debatem entre si.{" "}
           <span className="text-gradient">A IA Chefe decide.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-muted-foreground sm:text-lg">
-          Monte um painel com ChatGPT, Claude, Gemini, DeepSeek e mais. O DebateIA conduz as
-          rodadas de debate e, no final, a IA Chefe sintetiza a melhor resposta possível.
+          Monte um painel com as IAs que você já usa — GPT, Claude, Gemini, DeepSeek, GLM,
+          Qwen e qualquer outra. O DebateIA automatiza o revezamento: identifica quem disse o
+          quê e monta o próximo prompt pra você.
         </p>
       </motion.section>
 
@@ -130,7 +141,11 @@ export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps)
         >
           Novo debate
         </h2>
-        <SetupForm onCreate={onCreate} />
+        <SetupForm
+          roster={roster}
+          onChangeRoster={onChangeRoster}
+          onCreate={onCreate}
+        />
       </section>
 
       {/* Histórico */}
@@ -141,7 +156,7 @@ export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps)
         {debates.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
             Nenhum debate salvo ainda. Crie o primeiro acima — ele fica salvo automaticamente
-            neste navegador.
+            neste navegador (ou ative o modo sessão nas configurações para nada ser gravado).
           </div>
         ) : (
           <div className="space-y-3">
@@ -149,6 +164,7 @@ export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps)
               <HistoryItem
                 key={d.id}
                 debate={d}
+                roster={roster}
                 onOpen={onOpen}
                 onDelete={onDelete}
               />
@@ -162,16 +178,17 @@ export function HomeView({ debates, onCreate, onOpen, onDelete }: HomeViewProps)
 
 function HistoryItem({
   debate,
+  roster,
   onOpen,
   onDelete,
 }: {
   debate: Debate;
+  roster: AiInfo[];
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const chips: AiInfo[] = debate.participantIds
-    .map((id) => getAi(id))
-    .filter((a): a is AiInfo => Boolean(a));
+    .map((id) => resolveAi(id, roster));
 
   return (
     <Card className="transition-colors hover:border-primary/50">
@@ -192,6 +209,11 @@ function HistoryItem({
               <CalendarClock className="h-3 w-3" aria-hidden="true" />
               {shortDate(debate.updatedAt)}
             </span>
+            {debate.topicAttachments.length > 0 && (
+              <Badge variant="outline" className="text-[11px]">
+                📎 {debate.topicAttachments.length}
+              </Badge>
+            )}
           </div>
           <p className="mt-2 line-clamp-2 text-sm font-medium">{debate.topic}</p>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -219,8 +241,8 @@ function HistoryItem({
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir este debate?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Todas as respostas coladas neste debate serão apagadas permanentemente deste
-                  navegador. Essa ação não pode ser desfeita.
+                  Todas as respostas, anexos e a síntese deste debate serão apagados
+                  permanentemente deste navegador. Essa ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

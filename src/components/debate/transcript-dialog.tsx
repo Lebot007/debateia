@@ -16,14 +16,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CopyButton } from "@/components/debate/copy-button";
 import { downloadText, slugify } from "@/lib/download";
 import { buildTranscriptMarkdown } from "@/lib/prompts";
+import { AiInfo } from "@/lib/ais";
 import { Debate } from "@/lib/types";
 
 interface TranscriptDialogProps {
   debate: Debate;
+  roster: AiInfo[];
 }
 
-export function TranscriptDialog({ debate }: TranscriptDialogProps) {
-  const md = React.useMemo(() => buildTranscriptMarkdown(debate), [debate]);
+export function TranscriptDialog({ debate, roster }: TranscriptDialogProps) {
+  const md = React.useMemo(() => buildTranscriptMarkdown(debate, roster), [debate, roster]);
 
   return (
     <Dialog>

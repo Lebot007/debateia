@@ -39,23 +39,32 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { AiChip } from "@/components/debate/ai-chip";
+import { AnswerSlot } from "@/components/debate/answer-slot";
+import { AttachmentStrip } from "@/components/debate/attachment-strip";
 import { CopyButton } from "@/components/debate/copy-button";
 import { PromptBox } from "@/components/debate/prompt-box";
 import { TranscriptDialog } from "@/components/debate/transcript-dialog";
-import { aiName, getAi } from "@/lib/ais";
-import { buildChiefPrompt, buildJsonExport, buildRoundPrompt, buildTranscriptMarkdown, latestAnswer } from "@/lib/prompts";
+import { aiName, AiInfo, resolveAi } from "@/lib/ais";
+import {
+  buildChiefPrompt,
+  buildJsonExport,
+  buildTranscriptMarkdown,
+  latestAnswer,
+} from "@/lib/prompts";
 import { downloadText, slugify } from "@/lib/download";
-import { Debate } from "@/lib/types";
+import { AppSettings, Debate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface RoomViewProps {
   debate: Debate;
+  roster: AiInfo[];
+  settings: AppSettings;
   onChange: (updater: (d: Debate) => Debate) => void;
   onExit: () => void;
   onNewDebate: () => void;
 }
 
-export function RoomView({ debate, onChange, onExit, onNewDebate }: RoomViewProps) {
+export function RoomView({ debate, roster, settings, onChange, onExit, onNewDebate }: RoomViewProps) {
   function setAnswer(aiId: string, round: number, text: string) {
     onChange((d) => ({
       ...d,
@@ -64,6 +73,10 @@ export function RoomView({ debate, onChange, onExit, onNewDebate }: RoomViewProp
         [aiId]: { ...(d.answers[aiId] ?? {}), [round]: text },
       },
     }));
+  }
+
+  function setAttachments(next: Debate["topicAttachments"]) {
+    onChange((d) => ({ ...d, topicAttachments: next }));
   }
 
   function goFinishRound() {
@@ -95,12 +108,21 @@ export function RoomView({ debate, onChange, onExit, onNewDebate }: RoomViewProp
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 py-6 sm:py-10">
-      <TopicCard debate={debate} progress={progress} answeredNow={answeredNow} onExit={onExit} />
+      <TopicCard
+        debate={debate}
+        roster={roster}
+        progress={progress}
+        answeredNow={answeredNow}
+        onAttachments={setAttachments}
+        onExit={onExit}
+      />
 
       {roundsToRender.map((r) => (
         <RoundSection
           key={r}
           debate={debate}
+          roster={roster}
+          settings={settings}
           round={r}
           isCurrent={debate.phase === "rounds" && r === debate.currentRound}
           onAnswer={setAnswer}
@@ -109,7 +131,7 @@ export function RoomView({ debate, onChange, onExit, onNewDebate }: RoomViewProp
       ))}
 
       {debate.phase !== "rounds" && (
-        <ChiefPanel debate={debate} onChange={onChange} onNewDebate={onNewDebate} />
+        <ChiefPanel debate={debate} roster={roster} settings={settings} onChange={onChange} onNewDebate={onNewDebate} />
       )}
     </div>
   );
@@ -117,13 +139,17 @@ export function RoomView({ debate, onChange, onExit, onNewDebate }: RoomViewProp
 
 function TopicCard({
   debate,
+  roster,
   progress,
   answeredNow,
+  onAttachments,
   onExit,
 }: {
   debate: Debate;
+  roster: AiInfo[];
   progress: number;
   answeredNow: number;
+  onAttachments: (next: Debate["topicAttachments"]) => void;
   onExit: () => void;
 }) {
   const isChiefPhase = debate.phase !== "rounds";
@@ -140,7 +166,7 @@ function TopicCard({
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <TranscriptDialog debate={debate} />
+            <TranscriptDialog debate={debate} roster={roster} />
             <Button variant="ghost" size="sm" className="gap-2" onClick={onExit}>
               <Home className="h-4 w-4" aria-hidden="true" />
               Meus debates
@@ -156,11 +182,10 @@ function TopicCard({
           </Badge>
           <Badge variant="secondary" className="gap-1">
             <Crown className="h-3 w-3 text-amber-500" aria-hidden="true" />
-            {aiName(debate.chiefId)} coordena
+            {aiName(debate.chiefId, roster)} coordena
           </Badge>
           {debate.participantIds.map((id) => {
-            const ai = getAi(id);
-            if (!ai) return null;
+            const ai = resolveAi(id, roster);
             const answered = Boolean(latestAnswer(debate, id));
             return (
               <span
@@ -179,6 +204,12 @@ function TopicCard({
               </span>
             );
           })}
+        </div>
+        <div className="mt-4">
+          <AttachmentStrip
+            attachments={debate.topicAttachments}
+            onChange={onAttachments}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-2 pt-0">
@@ -200,12 +231,16 @@ function TopicCard({
 
 function RoundSection({
   debate,
+  roster,
+  settings,
   round,
   isCurrent,
   onAnswer,
   onFinish,
 }: {
   debate: Debate;
+  roster: AiInfo[];
+  settings: AppSettings;
   round: number;
   isCurrent: boolean;
   onAnswer: (aiId: string, round: number, text: string) => void;
@@ -254,17 +289,22 @@ function RoundSection({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4 border-t pt-4">
-            {debate.participantIds.map((id) => (
-              <AnswerSlot
-                key={id}
-                debate={debate}
-                aiId={id}
-                round={round}
-                onAnswer={onAnswer}
-              />
-            ))}
+            {debate.participantIds.map((id) => {
+              const ai = resolveAi(id, roster);
+              return (
+                <AnswerSlot
+                  key={id}
+                  debate={debate}
+                  roster={roster}
+                  ai={ai}
+                  round={round}
+                  settings={settings}
+                  onAnswer={onAnswer}
+                />
+              );
+            })}
             {isCurrent && (
-              <RoundFooter debate={debate} round={round} onFinish={onFinish} />
+              <RoundFooter debate={debate} roster={roster} round={round} onFinish={onFinish} />
             )}
           </CardContent>
         </CollapsibleContent>
@@ -273,94 +313,21 @@ function RoundSection({
   );
 }
 
-function AnswerSlot({
-  debate,
-  aiId,
-  round,
-  onAnswer,
-}: {
-  debate: Debate;
-  aiId: string;
-  round: number;
-  onAnswer: (aiId: string, round: number, text: string) => void;
-}) {
-  const ai = getAi(aiId);
-  if (!ai) return null;
-  const text = debate.answers[aiId]?.[round] ?? "";
-  const answered = text.trim().length > 0;
-  const prompt = buildRoundPrompt(debate, aiId, round);
-
-  return (
-    <div
-      className={cn(
-        "rounded-xl border p-4 transition-colors",
-        answered
-          ? "border-emerald-500/40 bg-emerald-500/[0.04]"
-          : "border-border bg-card",
-      )}
-    >
-      <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <AiChip ai={ai} />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">{ai.name}</p>
-          <p className="text-[11px] text-muted-foreground">{ai.provider}</p>
-        </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            answered
-              ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
-              : "border-amber-500/50 text-amber-600 dark:text-amber-400",
-          )}
-        >
-          {answered ? "Respondida" : "Aguardando"}
-        </Badge>
-      </div>
-      <PromptBox
-        title={`Prompt para ${ai.name} — Rodada ${round} de ${debate.totalRounds}`}
-        prompt={prompt}
-        openUrl={ai.url}
-        openLabel={ai.name}
-      />
-      <div className="mt-3 space-y-2">
-        <Textarea
-          value={text}
-          onChange={(e) => onAnswer(aiId, round, e.target.value)}
-          placeholder={`Cole aqui a resposta de ${ai.name} para a rodada ${round}...`}
-          aria-label={`Resposta de ${ai.name}, rodada ${round}`}
-          className="min-h-[140px] bg-background/60"
-        />
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{text.length.toLocaleString("pt-BR")} caracteres</span>
-          {text.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => onAnswer(aiId, round, "")}
-            >
-              Limpar
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RoundFooter({
   debate,
+  roster,
   round,
   onFinish,
 }: {
   debate: Debate;
+  roster: AiInfo[];
   round: number;
   onFinish: () => void;
 }) {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const missing = debate.participantIds
     .filter((id) => !debate.answers[id]?.[round]?.trim())
-    .map(aiName);
+    .map((id) => aiName(id, roster));
   const answered = debate.participantIds.length - missing.length;
   const isLast = round >= debate.totalRounds;
 
@@ -415,16 +382,21 @@ function RoundFooter({
 
 function ChiefPanel({
   debate,
+  roster,
+  settings,
   onChange,
   onNewDebate,
 }: {
   debate: Debate;
+  roster: AiInfo[];
+  settings: AppSettings;
   onChange: (updater: (d: Debate) => Debate) => void;
   onNewDebate: () => void;
 }) {
-  const chief = getAi(debate.chiefId);
-  if (!chief) return null;
-  const prompt = buildChiefPrompt(debate);
+  const chief = resolveAi(debate.chiefId, roster);
+  const prompt = buildChiefPrompt(debate, roster, {
+    includeFiles: settings.includeFilesInPrompts,
+  });
   const done = debate.chiefFinal.trim().length > 0;
 
   return (
@@ -454,7 +426,7 @@ function ChiefPanel({
           <PromptBox
             title={`Prompt de síntese para ${chief.name} (IA Chefe)`}
             prompt={prompt}
-            openUrl={chief.url}
+            openUrl={chief.url || undefined}
             openLabel={chief.name}
           />
           <Textarea
@@ -466,7 +438,7 @@ function ChiefPanel({
                 phase: e.target.value.trim() ? "done" : "chief",
               }))
             }
-            placeholder={`Cole aqui a síntese final de ${chief.name}...`}
+            placeholder={`Cole aqui a síntese final de ${chief.name}…`}
             aria-label="Síntese final da IA Chefe"
             className="min-h-[180px] bg-background/60"
           />
@@ -476,16 +448,18 @@ function ChiefPanel({
         </CardContent>
       </Card>
 
-      {done && <FinalAnswerCard debate={debate} onNewDebate={onNewDebate} />}
+      {done && <FinalAnswerCard debate={debate} roster={roster} onNewDebate={onNewDebate} />}
     </div>
   );
 }
 
 function FinalAnswerCard({
   debate,
+  roster,
   onNewDebate,
 }: {
   debate: Debate;
+  roster: AiInfo[];
   onNewDebate: () => void;
 }) {
   const base = `debateia-${slugify(debate.topic)}`;
@@ -497,8 +471,8 @@ function FinalAnswerCard({
         </Badge>
         <CardTitle className="text-lg">Síntese consolidada do painel</CardTitle>
         <CardDescription>
-          Resultado do debate entre {debate.participantIds.map(aiName).join(", ")} — sintetizado
-          por {aiName(debate.chiefId)}.
+          Resultado do debate entre {debate.participantIds.map((id) => aiName(id, roster)).join(", ")} —
+          sintetizado por {aiName(debate.chiefId, roster)}.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -520,7 +494,7 @@ function FinalAnswerCard({
           onClick={() =>
             downloadText(
               `${base}.md`,
-              buildTranscriptMarkdown(debate),
+              buildTranscriptMarkdown(debate, roster),
               "text/markdown;charset=utf-8",
             )
           }
@@ -535,7 +509,7 @@ function FinalAnswerCard({
           onClick={() =>
             downloadText(
               `${base}.json`,
-              buildJsonExport(debate),
+              buildJsonExport(debate, roster),
               "application/json;charset=utf-8",
             )
           }

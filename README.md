@@ -17,32 +17,35 @@
 ## O que é
 
 O **DebateIA** é uma arena de debates entre assistentes de IA. Você escolhe o tema, monta um
-painel com várias IAs (ChatGPT, Claude, Gemini, DeepSeek, Grok, Copilot, Perplexity, Meta AI,
-Le Chat, Qwen, Kimi e Poe) e escolhe uma delas como **IA Chefe**, que coordena o painel.
+painel com as IAs do **seu elenco** — ChatGPT, Claude, Gemini, DeepSeek, Grok, Copilot, GLM,
+Qwen ou **qualquer IA personalizada** que você cadastrar — e escolhe uma delas como
+**IA Chefe**, que coordena o painel.
 
 As IAs auxiliares debatem o tema em **rodadas** — em cada rodada elas leem as respostas das
 outras e refinam (ou criticam) as próprias respostas. No final, a **IA Chefe** recebe todas as
 respostas, avalia o painel, resolve as divergências e escreve a **resposta final consolidada**.
 
-Tudo roda **100% no seu navegador**: sem API, sem chave, sem backend e sem cadastro. Seus dados
-ficam salvos apenas no `localStorage` do seu dispositivo.
+Tudo roda **100% no seu navegador**: sem API, sem chave, sem backend e sem cadastro.
 
 ## Como funciona (sem API)
 
 Nenhum site consegue "puxar" respostas direto do ChatGPT ou do Gemini sem API oficial — os
 navegadores bloqueiam isso por segurança (CORS e cookies de sessão), além de violar os termos
-de uso desses serviços. O DebateIA resolve isso da forma que **realmente funciona**:
+de uso desses serviços. O DebateIA resolve isso automatizando ao máximo o copia-e-cola:
 
-1. **Copie o prompt** — o app monta o prompt ideal para cada IA, já embutindo automaticamente
-   as respostas das outras IAs da rodada anterior;
+1. **Copie o prompt** — o app monta o prompt ideal para cada IA, já embutindo o tema, os
+   anexos e as respostas das outras IAs da rodada anterior;
 2. **Abra a IA oficial** — um clique copia o prompt e abre o site oficial da IA. Você usa a
    sua conta de sempre (plano gratuito funciona);
-3. **Cole a resposta** — volte ao app e cole o que a IA respondeu;
+3. **Cole a resposta — e o app reconhece a IA** — ao voltar para a aba com uma resposta
+   copiada, a **colagem inteligente** identifica de qual IA ela veio (pelas palavras-chave de
+   cada IA) e oferece colar no slot certo com um clique. Se você colar no slot errado, o app
+   avisa e move o texto para você;
 4. **Síntese da IA Chefe** — ao final das rodadas, o app monta o prompt de síntese para a IA
    Chefe avaliar o painel e produzir a resposta final.
 
 A "prancheta" faz o transporte, e o DebateIA faz toda a orquestração: formatação dos prompts,
-controle de rodadas, status de cada IA, transcrição completa e exportação.
+controle de rodadas, identificação de origem, status de cada IA, transcrição e exportação.
 
 ### Modos de debate
 
@@ -52,20 +55,32 @@ controle de rodadas, status de cada IA, transcrição completa e exportação.
 
 ## Funcionalidades
 
-- Catálogo com **12 IAs** (até 8 por debate) e IA Chefe configurável
+- **Elenco editável de IAs (máx. 8)** — edite nome, empresa, site oficial e cor de qualquer
+  IA; adicione **IAs personalizadas** (GLM, Qwen Chat, Kimi…) ou escolha prontas do catálogo
+  (13 IAs); restaure o padrão quando quiser
+- **Colagem inteligente** — detecção automática da IA de origem do texto copiado, com
+  palavras-chave personalizáveis por IA
+- **Anexos no tema** — imagens (JPG/PNG/WebP, até 5 MB), `.txt` e `.md` (até 300 KB); o
+  conteúdo dos textos entra automaticamente nos prompts de todas as IAs
+- **Armazenamento leve com IndexedDB** — debates e anexos ficam no disco do navegador (não na
+  RAM); autosave a cada alteração
+- **Modo sessão (opcional)** — nada é gravado no navegador; ao fechar a aba, tudo some
+- **Exclusão por debate e "apagar tudo"** — remover um debate apaga também seus anexos do
+  armazenamento local
 - Rodadas configuráveis (1 a 4) com prompts montados automaticamente
 - Botão **"Abrir IA"** que copia o prompt e abre o site oficial em nova aba
 - Status de cada IA (aguardando / respondida) e progresso do debate
 - **Transcrição completa** do debate (visualizar, copiar, baixar `.md`)
 - Exportação estruturada em **`.json`**
-- Histórico de debates com autosave no `localStorage`
 - Tema claro/escuro, layout responsivo (celular, tablet e desktop)
-- Sem dependência de servidor: o site estático funciona em qualquer hospedagem
+- Sem dependência de servidor: o build estático funciona em qualquer hospedagem
 
 ## Tecnologias
 
 - [Next.js 16](https://nextjs.org/) (App Router) + React 19 + TypeScript
 - [Tailwind CSS 4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- **IndexedDB** (via API nativa) para debates + anexos, `localStorage` para elenco e
+  configurações
 - [Framer Motion](https://motion.dev/), [Sonner](https://sonner.emilkowal.ski/), [next-themes](https://github.com/pacocoursey/next-themes)
 - [Lucide Icons](https://lucide.dev/)
 
@@ -107,8 +122,10 @@ O `basePath` é derivado do nome do repositório automaticamente pelo workflow.
 
 ## Privacidade
 
-Nenhum dado sai do seu navegador: debates, respostas e sínteses ficam apenas no
-`localStorage`. O site não tem backend, não usa cookies próprios e não coleta nada.
+Nenhum dado sai do seu navegador: debates, respostas, anexos e sínteses ficam apenas no
+**IndexedDB/localStorage** do seu dispositivo. O site não tem backend, não usa cookies
+próprios e não coleta nada. A leitura da área de transferência (colagem inteligente) acontece
+somente com a permissão do navegador e o texto nunca é enviado para lugar nenhum.
 
 ## Licença
 

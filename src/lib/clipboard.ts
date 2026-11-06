@@ -26,3 +26,29 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/** A leitura da área de transferência exige contexto seguro + suporte do navegador. */
+export function clipboardReadAvailable(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    !!navigator.clipboard &&
+    typeof navigator.clipboard.readText === "function" &&
+    typeof window !== "undefined" &&
+    window.isSecureContext
+  );
+}
+
+/**
+ * Tenta ler texto da área de transferência.
+ * `denied` = true quando o navegador bloqueou (permissão negada/expirada).
+ */
+export async function tryReadClipboard(): Promise<{ text: string | null; denied: boolean }> {
+  if (!clipboardReadAvailable()) return { text: null, denied: false };
+  try {
+    const text = await navigator.clipboard.readText();
+    return { text, denied: false };
+  } catch (err) {
+    const name = (err as DOMException | undefined)?.name;
+    return { text: null, denied: name === "NotAllowedError" || name === "SecurityError" };
+  }
+}

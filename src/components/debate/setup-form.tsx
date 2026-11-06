@@ -15,9 +15,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AiChip } from "@/components/debate/ai-chip";
-import { AI_CATALOG, MAX_PARTICIPANTS, MAX_ROUNDS, MIN_PARTICIPANTS, getAi } from "@/lib/ais";
+import { AttachmentStrip } from "@/components/debate/attachment-strip";
+import { RosterManager } from "@/components/debate/roster-manager";
+import { AiInfo, MAX_PARTICIPANTS, MAX_ROUNDS, MIN_PARTICIPANTS, resolveAi } from "@/lib/ais";
 import { createDebate } from "@/lib/storage";
-import { Debate, DebateMode } from "@/lib/types";
+import { Attachment, Debate, DebateMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TOPIC_SUGGESTIONS = [
@@ -28,15 +30,31 @@ const TOPIC_SUGGESTIONS = [
 ];
 
 interface SetupFormProps {
+  roster: AiInfo[];
+  onChangeRoster: (next: AiInfo[]) => void;
   onCreate: (debate: Debate) => void;
 }
 
-export function SetupForm({ onCreate }: SetupFormProps) {
+export function SetupForm({ roster, onChangeRoster, onCreate }: SetupFormProps) {
   const [topic, setTopic] = React.useState("");
-  const [selected, setSelected] = React.useState<string[]>(["chatgpt", "claude", "gemini", "deepseek"]);
+  const [selected, setSelected] = React.useState<string[]>(() =>
+    ["chatgpt", "claude", "gemini", "deepseek"].filter((id) =>
+      roster.some((r) => r.id === id),
+    ),
+  );
   const [chiefId, setChiefId] = React.useState<string>("chatgpt");
   const [rounds, setRounds] = React.useState(2);
   const [mode, setMode] = React.useState<DebateMode>("collaborative");
+  const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+
+  // Se o usuário remover IAs do elenco enquanto monta o painel, ajusta a seleção
+  React.useEffect(() => {
+    setSelected((prev) => {
+      const next = prev.filter((id) => roster.some((r) => r.id === id));
+      setChiefId((c) => (next.includes(c) ? c : next[0] ?? ""));
+      return next;
+    });
+  }, [roster]);
 
   function toggleAi(id: string) {
     setSelected((prev) => {
@@ -74,6 +92,7 @@ export function SetupForm({ onCreate }: SetupFormProps) {
         totalRounds: rounds,
         participantIds: selected,
         chiefId,
+        topicAttachments: attachments,
       }),
     );
   }
@@ -92,29 +111,37 @@ export function SetupForm({ onCreate }: SetupFormProps) {
             síntese final.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Label htmlFor="topic" className="sr-only">
-            Tema do debate
-          </Label>
-          <Textarea
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="Ex.: Como montar um plano de estudos realista para aprender inglês em 6 meses?"
-            className="min-h-[96px] bg-background/60 text-base"
-            aria-describedby="topic-hint"
-          />
-          <div id="topic-hint" className="flex flex-wrap gap-2">
-            {TOPIC_SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setTopic(s)}
-                className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-              >
-                {s}
-              </button>
-            ))}
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <Label htmlFor="topic" className="sr-only">
+              Tema do debate
+            </Label>
+            <Textarea
+              id="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="Ex.: Como montar um plano de estudos realista para aprender inglês em 6 meses?"
+              className="min-h-[96px] bg-background/60 text-base"
+              aria-describedby="topic-hint"
+            />
+            <div id="topic-hint" className="flex flex-wrap gap-2">
+              {TOPIC_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setTopic(s)}
+                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              📎 Material de apoio (opcional) — vai junto nos prompts de todas as IAs
+            </p>
+            <AttachmentStrip attachments={attachments} onChange={setAttachments} />
           </div>
         </CardContent>
       </Card>
@@ -122,66 +149,90 @@ export function SetupForm({ onCreate }: SetupFormProps) {
       {/* 2. Participantes */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-xs font-bold text-primary">2</span>
-            IAs auxiliares do painel
-          </CardTitle>
-          <CardDescription>
-            Selecione de {MIN_PARTICIPANTS} a {MAX_PARTICIPANTS} IAs. Elas vão debater entre si
-            usando as contas que você já tem.
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-xs font-bold text-primary">2</span>
+                IAs auxiliares do painel
+              </CardTitle>
+              <CardDescription className="mt-1.5">
+                Selecione de {MIN_PARTICIPANTS} a {MAX_PARTICIPANTS} IAs do seu elenco.
+              </CardDescription>
+            </div>
+            <RosterManager
+              roster={roster}
+              onChange={onChangeRoster}
+              trigger={
+                <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                  <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                  Gerenciar IAs ({roster.length})
+                </Button>
+              }
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {AI_CATALOG.map((a) => {
-              const isSelected = selected.includes(a.id);
-              return (
-                <div
-                  key={a.id}
-                  role="checkbox"
-                  aria-checked={isSelected}
-                  tabIndex={0}
-                  onClick={() => toggleAi(a.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleAi(a.id);
-                    }
-                  }}
-                  className={cn(
-                    "relative flex cursor-pointer flex-col gap-2 rounded-xl border p-3 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
-                      : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/40",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <AiChip ai={a} />
-                    {isSelected && (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <Check className="h-3 w-3" aria-hidden="true" />
-                      </span>
+          {roster.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Seu elenco está vazio. Use “Gerenciar IAs” para adicionar ao menos{" "}
+              {MIN_PARTICIPANTS}.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {roster.map((a) => {
+                const isSelected = selected.includes(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    tabIndex={0}
+                    onClick={() => toggleAi(a.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleAi(a.id);
+                      }
+                    }}
+                    className={cn(
+                      "relative flex cursor-pointer flex-col gap-2 rounded-xl border p-3 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isSelected
+                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
+                        : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/40",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <AiChip ai={a} />
+                      {isSelected && (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="h-3 w-3" aria-hidden="true" />
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold leading-tight">{a.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {a.provider || "IA personalizada"}
+                      </p>
+                    </div>
+                    {a.url && (
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Abrir o site oficial de ${a.name} em outra aba`}
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                        site oficial
+                      </a>
                     )}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold leading-tight">{a.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.provider}</p>
-                  </div>
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Abrir o site oficial de ${a.name} em outra aba`}
-                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                    site oficial
-                  </a>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
           <p className="mt-3 text-xs text-muted-foreground">
             {selected.length} de {MAX_PARTICIPANTS} selecionadas
           </p>
@@ -206,8 +257,7 @@ export function SetupForm({ onCreate }: SetupFormProps) {
           ) : (
             <div className="flex flex-wrap gap-2">
               {selected.map((id) => {
-                const ai = getAi(id);
-                if (!ai) return null;
+                const ai = resolveAi(id, roster);
                 const isChief = chiefId === id;
                 return (
                   <button
